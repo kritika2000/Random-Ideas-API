@@ -1,24 +1,28 @@
 const path = require('path');
 const ideas = require('../data');
 const fs = require('fs/promises');
+const Ideas = require('../model/Ideas');
 
-const getAllIdeas = (req, res) => {
+const getAllIdeas = async (req, res) => {
+  const ideas = await Ideas.find({}).exec();
   res.json({ success: true, data: ideas });
 };
 
-const getAnIdea = (req, res) => {
+const getAnIdea = async (req, res) => {
   const { id } = req.params;
-  const idea = ideas.filter((idea) => idea.id === Number(id));
+  // const idea = ideas.filter((idea) => idea.id === Number(id));
+  const idea = await Ideas.find({ id: Number(id) }).exec();
   if (!idea.length) {
     return res
       .status(404)
       .json({ success: false, error: `Item with ID ${id} doesn't exist` });
   }
-  res.json({ success: true, data: idea });
+  res.status(200).json({ success: true, data: idea });
 };
 
 const createAnIdea = async (req, res) => {
   const { text, tag, username } = req.body;
+  const ideas = await Ideas.find({}).exec();
   const idea = {
     id: ideas.length + 1,
     text,
@@ -27,10 +31,7 @@ const createAnIdea = async (req, res) => {
     date: new Date().toISOString().slice(0, 10),
   };
   try {
-    await fs.writeFile(
-      path.resolve(__dirname, '..', 'data.json'),
-      JSON.stringify([...ideas, idea])
-    );
+    await Ideas.create(idea);
   } catch (err) {
     console.log(err);
     return res
@@ -43,54 +44,44 @@ const createAnIdea = async (req, res) => {
 const updateIdea = async (req, res) => {
   const { text, tag, username } = req.body;
   const { id } = req.params;
-  console.log(req.body);
-  const ideaToUpdate = ideas.find((idea) => idea.id === Number(id));
-  if (!ideaToUpdate)
+  // const ideaToUpdate = ideas.find((idea) => idea.id === Number(id));
+  const ideaToUpdate = await Ideas.find({ id: Number(id) }).exec();
+  if (!ideaToUpdate.length)
     return res
       .status(404)
       .json({ success: false, error: `Item with ID ${id} doesn't exist` });
-  const updatedIdeas = ideas.map((idea) => {
-    return idea.id !== Number(id)
-      ? idea
-      : {
-          id: ideaToUpdate.id,
-          text,
-          tag,
-          username,
-          data: ideaToUpdate.date,
-        };
-  });
   try {
-    await fs.writeFile(
-      path.resolve(__dirname, '..', 'data.json'),
-      JSON.stringify(updatedIdeas)
-    );
+    await Ideas.findOneAndUpdate(
+      { id: Number(id) },
+      {
+        text,
+        tag,
+        username,
+      }
+    ).exec();
   } catch (err) {
     console.log(err);
     return res
       .status(500)
-      .json({ success: false, message: "Couldn't update post" });
+      .json({ success: false, message: "Couldn't create new post" });
   }
   res.status(201).json({ success: true, message: 'Idea Updated Successfully' });
 };
 
 const deleteIdea = async (req, res) => {
   const { id } = req.params;
-  const ideaToUpdate = ideas.find((idea) => idea.id === Number(id));
-  if (!ideaToUpdate)
+  const ideaToUpdate = await Ideas.find({ id: Number(id) }).exec();
+  if (!ideaToUpdate.length)
     return res
       .status(404)
       .json({ success: false, error: `Item with ID ${id} doesn't exist` });
   try {
-    await fs.writeFile(
-      path.resolve(__dirname, '..', 'data.json'),
-      JSON.stringify([...ideas.filter((idea) => idea.id !== Number(id))])
-    );
+    await Ideas.deleteOne({ id: Number(id) }).exec();
   } catch (err) {
     console.log(err);
     return res
       .status(500)
-      .json({ success: false, message: "Couldn't delete idea" });
+      .json({ success: false, message: "Couldn't create new post" });
   }
   res.status(204).json({ success: true, message: 'Idea Deleted Successfully' });
 };
